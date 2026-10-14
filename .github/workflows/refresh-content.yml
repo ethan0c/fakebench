@@ -16,7 +16,7 @@ jobs:
         run: |
           python3 -I scripts/extract_parquet.py --dataset Rapidata/OpenAI-4o_t2i_human_preference --shards random:2 --count ${{ github.event.inputs.count || 60 }} --per-model 10
           for d in Imagen4 Seedream-3 Hidream Imagen-4-ultra-24-7-25 Recraft-v3-24-7-25; do
-            python3 -I scripts/extract_parquet.py --dataset Rapidata/${d}_t2i_human_preference --shards random:1 --count 12 || true
+            python3 -I scripts/extract_parquet.py --dataset Rapidata/${d}_t2i_human_preference --shards random:1 --count 12 --per-prompt 7 --per-model 80 || true
           done
         env: { HF_TOKEN: "${{ secrets.HF_TOKEN }}" }
       - name: Generate fresh AI images with current models (only when a key is set)

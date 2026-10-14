@@ -15,8 +15,8 @@
   let prefetched = null; // next random round, fetched while results are on screen
   let seconds = 5;
 
-  async function fetchRound(mode) {
-    const r = await fetch(`/api/round?test=${TEST}&mode=${mode}`);
+  async function fetchRound(mode, opts = {}) {
+    const r = await fetch(`/api/round?${new URLSearchParams({ test: TEST, mode, ...opts })}`);
     if (!r.ok) throw new Error("round");
     return r.json();
   }
@@ -42,17 +42,19 @@
   }
 
   // ---------- game ----------
-  const game = { mode: "round", items: [], idx: 0, answers: [], t0: 0, timer: null, locked: false };
+  const game = { mode: "round", opts: {}, items: [], idx: 0, answers: [], t0: 0, timer: null, locked: false };
 
-  async function start(mode) {
+  async function start(mode, opts = {}) {
     game.mode = mode;
-    const btns = [$("#btn-round"), $("#btn-daily")];
+    game.opts = opts;
+    const btns = [$("#btn-round"), $("#btn-daily"), $("#btn-level"), $("#btn-again")];
     btns.forEach((b) => b && (b.disabled = true));
     try {
-      const data = mode === "round" && prefetched ? prefetched : await fetchRound(mode);
+      const data = mode === "round" && prefetched ? prefetched : await fetchRound(mode, opts);
       prefetched = null;
       seconds = data.seconds || 5;
-      game.items = data.items; game.idx = 0; game.answers = []; game.day = data.day;
+      game.items = data.items; game.idx = 0; game.answers = []; game.day = data.day; game.data = data;
+      $("#round-label").textContent = mode === "level" ? `Level ${data.level} · ${data.level_name}` : mode === "cat" ? data.cat_name : mode === "daily" ? "Daily" : "";
       await preload(game.items);
       show("play");
       next();
@@ -100,7 +102,7 @@
     let pct = null, rounds = 0;
     try {
       const r = await fetch("/api/result", { method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ test: TEST, mode: game.mode, score, total, avg_ms, items: game.answers.map((a) => ({ id: a.id, correct: a.correct })) }) });
+        body: JSON.stringify({ test: TEST, mode: game.mode, ...game.opts, score, total, avg_ms, items: game.answers.map((a) => ({ id: a.id, correct: a.correct })) }) });
       const d = await r.json(); pct = d.percentile; rounds = d.rounds;
     } catch {}
     if (pct == null) { $("#r-pct").textContent = "–"; $("#r-pct-line").textContent = "Your score is ready, but we couldn't load your percentile."; }
@@ -108,6 +110,9 @@
       $("#r-pct").textContent = `${pct}%`;
       $("#r-pct-line").innerHTML = `Your score ranks above roughly <span class="score-pct">${pct}%</span> of scores.<span class="muted small"> Estimated from ${rounds.toLocaleString()} completed ${rounds === 1 ? "round" : "rounds"} and a starting baseline. <a href="/about">How it's calculated</a></span>`;
     }
+    $("#r-outcome").className = "outcome hidden";
+    $("#btn-again").textContent = "Play again";
+    if (game.mode === "level") levelOutcome(score);
     if (game.mode === "daily") saveDaily(score, total, pct);
     renderShare(score, total, pct);
     if (game.mode === "round") fetchRound("round").then((d) => (prefetched = d)).catch(() => {});
@@ -135,6 +140,8 @@
       const streak = store.get(`fb:daily:${TEST}`, {}).streak || 1;
       return `FakeBench Daily ${game.day}\n${name}: ${score}/${total}${pct != null ? ` · ahead of roughly ${pct}% of scores` : ""}\n${grid}\n🔥 ${streak}-day streak\n`;
     }
+    if (game.mode === "level") return `I ${score >= game.data.pass ? "passed" : "got"} level ${game.data.level} (${game.data.level_name}) on the FakeBench ${name}${score >= game.data.pass ? "" : ` ${score}/${total}`}. How far can you get?`;
+    if (game.mode === "cat") return `I got ${score}/${total} on FakeBench's ${game.data.cat_name.toLowerCase()} round. Real photo or AI: how many can you get right?`;
     return `I got ${score}/${total} on the ${name}${pct != null ? ` (ahead of roughly ${pct}% of scores)` : ""}. How many can you get right?`;
   }
 
@@ -148,6 +155,67 @@
     const nat = $("#btn-share");
     if (navigator.share) { nat.classList.remove("hidden"); nat.onclick = () => navigator.share({ title: "FakeBench", text, url }).catch(() => {}); }
     else nat.classList.add("hidden");
+  }
+
+  // ---------- levels ----------
+  const catalog = { levels: [], pass: 8, cats: [] };
+  let selected = 1;
+  const levelState = () => store.get(`fb:levels:${TEST}`, { best: {} });
+  const unlocked = () => { const b = levelState().best; let n = 1; while (catalog.levels[n] && b[n] >= catalog.pass) n++; return n; };
+  const LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+
+  function levelOutcome(score) {
+    const n = game.data.level, st = levelState(), passed = score >= game.data.pass;
+    st.best[n] = Math.max(st.best[n] ?? 0, score); store.set(`fb:levels:${TEST}`, st);
+    const last = !catalog.levels[n];
+    const out = $("#r-outcome");
+    out.className = `outcome ${passed ? "pass" : "fail"}`;
+    out.textContent = passed ? (last ? `Level ${n} passed. That's the top of the ladder.` : `Level ${n} passed. Level ${n + 1} is unlocked.`)
+      : `Level ${n} needs ${game.data.pass} out of ${game.items.length}. You got ${score}.`;
+    selected = passed && !last ? n + 1 : n;
+    $("#btn-again").textContent = passed ? (last ? "Play again" : `Play level ${n + 1}`) : `Retry level ${n}`;
+    renderLadder();
+  }
+
+  function renderLadder() {
+    const list = $("#ladder"); if (!list || !catalog.levels.length) return;
+    const best = levelState().best, top = unlocked();
+    if (selected > top) selected = top;
+    list.innerHTML = "";
+    for (const l of catalog.levels) {
+      const state = best[l.n] >= catalog.pass ? "done" : l.n <= top ? "open" : "locked";
+      const li = el("li", `${state}${l.n === selected ? " sel" : ""}`);
+      const b = el("button", null, `<span class="node">${state === "locked" ? LOCK : l.n}</span><span class="lname">${esc(l.name)}</span><span class="lbest">${best[l.n] != null ? `${best[l.n]}/${l.size}` : ""}</span>`);
+      b.type = "button"; b.disabled = state === "locked";
+      b.setAttribute("aria-label", `Level ${l.n}, ${l.name}${state === "locked" ? ", locked" : ""}`);
+      if (l.n === selected) b.setAttribute("aria-current", "step");
+      b.onclick = () => { selected = l.n; renderLadder(); };
+      li.appendChild(b); list.appendChild(li);
+    }
+    const l = catalog.levels[selected - 1];
+    $("#ld-title").textContent = `Level ${l.n} · ${l.name}`;
+    $("#ld-meta").textContent = `${l.size} images, ${l.seconds} seconds each${best[l.n] != null ? ` · best ${best[l.n]}/${l.size}` : ""}`;
+    $("#btn-level").textContent = `Play level ${l.n}`;
+  }
+
+  function renderCats() {
+    const list = $("#cat-list"); if (!list || !catalog.cats.length) return;
+    list.innerHTML = "";
+    for (const c of catalog.cats) {
+      const li = el("li", null, `<a href="#"><span class="t-name">${esc(c.name)}</span><span class="t-desc">${c.count} images in the pool</span><span class="t-go">Practice</span></a>`);
+      $("a", li).onclick = (e) => { e.preventDefault(); start("cat", { cat: c.id }); };
+      list.appendChild(li);
+    }
+    $("#cats-sec").classList.remove("hidden");
+  }
+
+  async function loadCatalog() {
+    if (!$("#ladder")) return;
+    try {
+      Object.assign(catalog, await (await fetch(`/api/catalog?test=${TEST}`)).json());
+      selected = unlocked();
+      renderLadder(); renderCats();
+    } catch { $("#levels-sec").classList.add("hidden"); }
   }
 
   // ---------- daily ----------
@@ -180,8 +248,9 @@
   // ---------- wiring ----------
   $("#btn-round").onclick = () => start("round");
   $("#btn-daily").onclick = () => start("daily");
-  $("#btn-again").onclick = () => start("round");
-  $("#btn-home").onclick = () => { show("start"); updateDailyButton(); };
+  $("#btn-again").onclick = () => game.mode === "level" ? start("level", { level: selected }) : start(game.mode === "cat" ? "cat" : "round", game.mode === "cat" ? game.opts : {});
+  $("#btn-home").onclick = () => { show("start"); updateDailyButton(); renderLadder(); };
+  const lvBtn = $("#btn-level"); if (lvBtn) lvBtn.onclick = () => start("level", { level: selected });
   $("#c-real").onclick = () => answer("real");
   $("#c-ai").onclick = () => answer("ai");
   document.addEventListener("keydown", (e) => {
@@ -189,6 +258,6 @@
     if (e.key === "ArrowLeft" || e.key.toLowerCase() === "r") answer("real");
     if (e.key === "ArrowRight" || e.key.toLowerCase() === "a") answer("ai");
   });
-  loadStat(); updateDailyButton();
+  loadStat(); updateDailyButton(); loadCatalog();
   fetchRound("round").then((d) => (prefetched = d)).catch(() => {});
 })();

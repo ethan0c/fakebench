@@ -2,8 +2,27 @@ import { ImageResponse, loadGoogleFont } from "workers-og";
 
 // ---------- config ----------
 const TESTS = {
-  image: { name: "AI Image Test", roundSize: 20, dailySize: 10, seconds: 5, noun: "images" },
+  image: { name: "AI Image Test", roundSize: 20, dailySize: 10, seconds: 5, noun: "images", practiceSize: 10 },
 };
+const MODES = ["round", "daily", "level", "cat"];
+
+// Levels: 10 images each, harder images and less time as you climb. 8/10 unlocks the next one.
+const LEVELS = [
+  ["Warm-up", 6], ["Easy", 6], ["Steady", 5], ["Tricky", 5], ["Sneaky", 5],
+  ["Hard", 4], ["Very hard", 4], ["Expert", 4], ["Forensic", 3], ["Impossible", 3],
+].map(([name, seconds], i) => ({ n: i + 1, name, seconds }));
+const LEVEL_SIZE = 10, PASS_SCORE = 8;
+
+// Subject categories (tagged in the manifest by scripts/categories.py). A category is offered
+// only once the pool has enough of both labels to fill a balanced round.
+const CATS = { people: "People", animals: "Animals", food: "Food", places: "Places", objects: "Objects" };
+
+// Starting guess for how often an image fools people, before item_stats has enough plays.
+// Real photos: how often they get called AI. AI images: how often they pass as real, by model.
+const PRIOR_FOOL = { real: 0.3, ai: 0.35 };
+const MODEL_FOOL = [[/dall/i, 0.22], [/aurora|grok/i, 0.3], [/ideogram/i, 0.32], [/flux\.1 pro/i, 0.4], [/runway/i, 0.4],
+  [/flux 1\.1/i, 0.45], [/gpt-4o|imagen/i, 0.5]];
+const PRIOR_PLAYS = 10;
 const PRIOR_P = 0.62;      // assumed accuracy for the starting score distribution
 const PRIOR_WEIGHT = 40;   // pseudo-rounds blended into the histogram until real data dominates
 const MANIFEST_TTL = 5 * 60 * 1000;
@@ -37,6 +56,44 @@ async function loadManifest(env, reqUrl) {
   return data;
 }
 
+// ---------- difficulty ----------
+let foolCache = { at: 0, data: null };
+async function loadFoolRates(env) {
+  if (foolCache.data && Date.now() - foolCache.at < MANIFEST_TTL) return foolCache.data;
+  const { results } = await env.DB.prepare("SELECT item_id, shown, wrong FROM item_stats").all();
+  const data = new Map(results.map((r) => [r.item_id, r]));
+  foolCache = { at: Date.now(), data };
+  return data;
+}
+function foolRate(item, stats) {
+  let prior = PRIOR_FOOL[item.label] ?? 0.3;
+  if (item.label === "ai") for (const [re, p] of MODEL_FOOL) if (re.test(item.model || "")) { prior = p; break; }
+  const s = stats.get(item.id);
+  return ((s?.wrong || 0) + prior * PRIOR_PLAYS) / ((s?.shown || 0) + PRIOR_PLAYS);
+}
+
+// Each label is ranked by fool rate; level k draws from a window centred k/levels of the way up.
+function pickLevel(manifest, stats, level, n, rng) {
+  const half = Math.floor(n / 2);
+  const band = (label, count) => {
+    const ranked = manifest.items.filter((i) => i.label === label)
+      .map((i) => ({ i, d: foolRate(i, stats) + rng() * 0.02 })).sort((a, b) => a.d - b.d).map((x) => x.i);
+    const width = Math.min(ranked.length, Math.max(count * 3, Math.round(ranked.length * 0.25)));
+    const centre = ((level - 0.5) / LEVELS.length) * ranked.length;
+    const start = Math.max(0, Math.min(ranked.length - width, Math.round(centre - width / 2)));
+    return sample(ranked.slice(start, start + width), count, rng);
+  };
+  return shuffle([...band("real", half), ...band("ai", n - half)], rng);
+}
+
+function catCounts(manifest) {
+  const out = {};
+  for (const id in CATS) out[id] = { real: 0, ai: 0 };
+  for (const i of manifest.items) if (out[i.cat]) out[i.cat][i.label]++;
+  return out;
+}
+const catOpen = (counts, id, n) => counts[id] && counts[id].real >= n / 2 && counts[id].ai >= n / 2;
+
 function pickRound(manifest, n, rng) {
   const real = manifest.items.filter((i) => i.label === "real");
   const ai = manifest.items.filter((i) => i.label === "ai");
@@ -50,14 +107,39 @@ async function apiRound(req, env, url) {
   const mode = url.searchParams.get("mode") || "round";
   const cfg = TESTS[test];
   if (!cfg) return bad("unknown test", 404);
-  if (!["round", "daily"].includes(mode)) return bad("unknown mode");
+  if (!MODES.includes(mode)) return bad("unknown mode");
   const manifest = await loadManifest(env, url);
   const day = todayUTC();
   const rng = mode === "daily" ? mulberry32(hashStr(`daily:${test}:${day}`)) : mulberry32(hashStr(crypto.randomUUID()));
-  const n = mode === "daily" ? cfg.dailySize : cfg.roundSize;
-  const items = pickRound(manifest, n, rng);
-  return json({ test, mode, day, seconds: cfg.seconds, version: manifest.version, items }, 200,
+  let items, seconds = cfg.seconds, extra = {};
+  if (mode === "level") {
+    const level = parseInt(url.searchParams.get("level"), 10);
+    const lv = LEVELS[level - 1];
+    if (!lv) return bad("unknown level");
+    items = pickLevel(manifest, await loadFoolRates(env), level, LEVEL_SIZE, rng);
+    seconds = lv.seconds; extra = { level, level_name: lv.name, pass: PASS_SCORE };
+  } else if (mode === "cat") {
+    const cat = url.searchParams.get("cat");
+    if (!catOpen(catCounts(manifest), cat, cfg.practiceSize)) return bad("unknown category");
+    items = pickRound({ items: manifest.items.filter((i) => i.cat === cat) }, cfg.practiceSize, rng);
+    extra = { cat, cat_name: CATS[cat] };
+  } else {
+    items = pickRound(manifest, mode === "daily" ? cfg.dailySize : cfg.roundSize, rng);
+  }
+  return json({ test, mode, day, seconds, version: manifest.version, items, ...extra }, 200,
     mode === "daily" ? { "cache-control": "public, max-age=300" } : {});
+}
+
+async function apiCatalog(req, env, url) {
+  const test = url.searchParams.get("test") || "image";
+  const cfg = TESTS[test];
+  if (!cfg) return bad("unknown test", 404);
+  const manifest = await loadManifest(env, url);
+  const counts = catCounts(manifest);
+  const cats = Object.entries(CATS).filter(([id]) => catOpen(counts, id, cfg.practiceSize))
+    .map(([id, name]) => ({ id, name, count: counts[id].real + counts[id].ai }));
+  return json({ test, levels: LEVELS.map((l) => ({ ...l, size: LEVEL_SIZE })), pass: PASS_SCORE, cats, practice_size: cfg.practiceSize },
+    200, { "cache-control": "public, max-age=300" });
 }
 
 async function percentile(env, histKey, total, score) {
@@ -83,13 +165,16 @@ async function apiResult(req, env) {
   let b; try { b = await req.json(); } catch { return bad("bad json"); }
   const cfg = TESTS[b.test];
   if (!cfg) return bad("unknown test");
-  if (!["round", "daily"].includes(b.mode)) return bad("unknown mode");
-  const total = b.mode === "daily" ? cfg.dailySize : cfg.roundSize;
+  if (!MODES.includes(b.mode)) return bad("unknown mode");
+  if (b.mode === "level" && !LEVELS[b.level - 1]) return bad("unknown level");
+  if (b.mode === "cat" && !CATS[b.cat]) return bad("unknown category");
+  const total = { daily: cfg.dailySize, level: LEVEL_SIZE, cat: cfg.practiceSize }[b.mode] ?? cfg.roundSize;
   if (!Number.isInteger(b.score) || b.score < 0 || b.score > total || b.total !== total) return bad("bad score");
   const avgMs = Number.isFinite(b.avg_ms) ? Math.max(0, Math.min(60000, Math.round(b.avg_ms))) : null;
   const items = Array.isArray(b.items) ? b.items.slice(0, total).filter((i) => typeof i.id === "string" && i.id.length <= 24) : [];
   const day = b.mode === "daily" ? todayUTC() : null;
-  const histKey = b.mode === "daily" ? `${b.test}:daily` : b.test;
+  // Each level and category gets its own histogram, so a percentile compares like with like.
+  const histKey = { daily: `${b.test}:daily`, level: `${b.test}:L${b.level}`, cat: `${b.test}:${b.cat}` }[b.mode] ?? b.test;
 
   const stmts = [
     env.DB.prepare("INSERT INTO results (test, mode, day, score, total, avg_ms) VALUES (?, ?, ?, ?, ?, ?)").bind(b.test, b.mode, day, b.score, total, avgMs),
@@ -98,7 +183,7 @@ async function apiResult(req, env) {
   ];
   await env.DB.batch(stmts);
   const p = await percentile(env, histKey, total, b.score);
-  return json({ ok: true, ...p });
+  return json({ ok: true, ...p, ...(b.mode === "level" ? { passed: b.score >= PASS_SCORE } : {}) });
 }
 
 async function apiStats(req, env, url) {
@@ -108,7 +193,7 @@ async function apiStats(req, env, url) {
   const key = new Request(new URL(`/api/stats?test=${test}`, url).toString());
   const hit = await cache.match(key);
   if (hit) return hit;
-  const q = (where) => env.DB.prepare(`SELECT COUNT(*) c, COALESCE(SUM(score),0) s, COALESCE(SUM(total),0) t FROM results WHERE test = ? ${where}`).bind(test).first();
+  const q = (where) => env.DB.prepare(`SELECT COUNT(*) c, COALESCE(SUM(score),0) s, COALESCE(SUM(total),0) t FROM results WHERE test = ? AND mode IN ('round', 'daily') ${where}`).bind(test).first();
   const [all, week, prev, hard] = await Promise.all([
     q(""),
     q("AND created_at >= datetime('now','-7 days')"),
@@ -219,6 +304,7 @@ export default {
       if (path === "/api/round") return apiRound(req, env, url);
       if (path === "/api/result") return apiResult(req, env);
       if (path === "/api/stats") return apiStats(req, env, url);
+      if (path === "/api/catalog") return apiCatalog(req, env, url);
       if (path === "/api/health") return json({ ok: true, time: new Date().toISOString() });
       let m;
       if (path === "/og/overlay.png") return overlayCard(req, env, url);
@@ -236,7 +322,7 @@ export default {
     await env.DB.prepare(
       `INSERT OR REPLACE INTO daily_rollup (test, day, rounds, correct, total)
        SELECT test, date(created_at), COUNT(*), SUM(score), SUM(total) FROM results
-       WHERE date(created_at) = date('now','-1 day') GROUP BY test`
+       WHERE date(created_at) = date('now','-1 day') AND mode IN ('round', 'daily') GROUP BY test`
     ).run();
   },
 };

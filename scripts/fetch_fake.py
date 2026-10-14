@@ -28,9 +28,18 @@ MODEL_NAMES = {
     "lumina": "Lumina (OpenGVLab)", "reve": "Reve Halfmoon", "stable-diffusion-3.5": "Stable Diffusion 3.5", "sd3.5": "Stable Diffusion 3.5",
 }
 
+SUBSTR = [("imagen-4.0-ultra", "Imagen 4 Ultra (Google)"), ("imagen-4-ultra", "Imagen 4 Ultra (Google)"), ("imagen-4", "Imagen 4 (Google)"), ("imagen4", "Imagen 4 (Google)"),
+          ("seedream-3", "Seedream 3 (ByteDance)"), ("seedream", "Seedream (ByteDance)"), ("hidream", "HiDream-I1"), ("recraft-v3", "Recraft V3"), ("recraft", "Recraft"),
+          ("ideogram-v3", "Ideogram 3"), ("ideogram-v2", "Ideogram 2"), ("midjourney-7", "Midjourney 7"), ("flux-1.1", "FLUX 1.1 Pro"), ("flux", "FLUX"), ("4o", "GPT-4o image (OpenAI)"),
+          ("gpt-image", "GPT Image (OpenAI)"), ("dalle", "DALL·E 3 (OpenAI)"), ("aurora", "Aurora (xAI Grok)"), ("lumina", "Lumina (OpenGVLab)"), ("reve", "Reve Halfmoon"), ("halfmoon", "Reve Halfmoon"), ("janus", "Janus 7B (DeepSeek)"), ("frames", "Runway Frames")]
 def pretty_model(raw):
-    base = re.sub(r"-\d{1,2}-\d{1,2}-\d{2}$", "", raw.lower())   # strip date suffixes like -26-3-25
-    return MODEL_NAMES.get(base) or MODEL_NAMES.get(raw.lower()) or raw.replace("-", " ").title()
+    low = raw.lower()
+    base = re.sub(r"-\d{1,2}-\d{1,2}-\d{2}$", "", low)   # strip date suffixes like -26-3-25
+    if base in MODEL_NAMES: return MODEL_NAMES[base]
+    if low in MODEL_NAMES: return MODEL_NAMES[low]
+    for key, name in SUBSTR:
+        if key in low: return name
+    return raw.replace("-", " ").title()
 
 def get(url, binary=False, tries=6):
     for attempt in range(tries):
