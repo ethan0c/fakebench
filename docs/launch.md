@@ -1,6 +1,6 @@
 # Launch copy
 
-Replace `fakebench.ethanlma.workers.dev` with the live domain before posting. If you include an average score, use the current number on the site.
+Replace `fakebench.com` with the live domain before posting. If you include an average score, use the current number on the site.
 
 ## Hacker News (Show HN)
 
@@ -13,7 +13,7 @@ I'm also interested in how the scores change over time. The site shows the avera
 
 Real photos come from Wikimedia Commons with credits. AI images come from openly licensed datasets and optional generation runs. Every image gets the same crop and JPEG settings to reduce clues from file quality. The site runs on a Cloudflare Worker, with a weekly content refresh. Happy to answer questions about the image sources or how the rankings work.
 
-https://fakebench.ethanlma.workers.dev/image
+https://fakebench.com/image
 
 ## Product Hunt
 
@@ -25,7 +25,7 @@ https://fakebench.ethanlma.workers.dev/image
 
 **Title:** I made a test where you have 5 seconds to tell a real photo from an AI image
 
-**Body:** It's called FakeBench: 20 images, five seconds each. Afterward, you get your score and can review the images you missed, including which model made the AI images. There's also a daily 10-image challenge. I'd like to hear which images caught you out. https://fakebench.ethanlma.workers.dev/image
+**Body:** It's called FakeBench: 20 images, five seconds each. Afterward, you get your score and can review the images you missed, including which model made the AI images. There's also a daily 10-image challenge. I'd like to hear which images caught you out. https://fakebench.com/image
 
 ## Reply templates (for comments, any platform)
 

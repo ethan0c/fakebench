@@ -89,7 +89,7 @@ def post_postiz(text, link, video):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--site", default=os.environ.get("SITE_URL", "https://fakebench.ethanlma.workers.dev"))
+    ap.add_argument("--site", default=os.environ.get("SITE_URL", "https://fakebench.com"))
     ap.add_argument("--video", default=None)
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()

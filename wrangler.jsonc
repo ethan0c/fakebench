@@ -13,6 +13,10 @@
 			"/share/*"
 		]
 	},
+	"routes": [
+		{ "pattern": "fakebench.com", "custom_domain": true },
+		{ "pattern": "www.fakebench.com", "custom_domain": true }
+	],
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -35,7 +39,7 @@
 	},
 	"vars": {
 		"SITE_NAME": "FakeBench",
-		"SITE_URL": "https://fakebench.ethanlma.workers.dev"
+		"SITE_URL": "https://fakebench.com"
 	},
 	"triggers": {
 		"crons": [
