@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Image Test: can you tell real photos from AI? | FakeBench</title>
+<meta name="description" content="20 images, 5 seconds each. Real photo or AI? Get your score, see how it compares with other results, and review the images you missed. Free, no sign-up.">
+<link rel="canonical" href="https://fakebench.pages.dev/image">
+<meta property="og:title" content="AI Image Test: can you spot the fakes?">
+<meta property="og:description" content="Real or AI? Decide in 5 seconds, then see your score and the images you missed.">
+<meta property="og:image" content="/og/image.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101318" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="/app.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"FakeBench AI Image Test","applicationCategory":"Game","operatingSystem":"Web","description":"Test whether you can tell real photographs from AI-generated images and get a percentile score.","offers":{"@type":"Offer","price":"0"}}</script>
+</head>
+<body data-test="image">
+<main class="wrap">
+  <header class="top"><a class="brand" href="/" aria-label="FakeBench home"><img src="/favicon.svg" alt="" width="30" height="30">fakebench</a><nav><a href="/">All tests</a><a href="/about">About</a></nav></header>
+
+  <section id="start">
+    <h1>AI Image Test</h1>
+    <p class="lede">Real photo or AI? You have five seconds for each of 20 images. See how many you get right and how your score compares.</p>
+    <p class="stat stat-sm" id="stat"><span class="stat-num"></span><span class="stat-text">Loading this week's numbers…</span></p>
+    <div class="row">
+      <button class="btn primary big" id="btn-round">Start the test</button>
+      <button class="btn big" id="btn-daily">Daily challenge</button>
+    </div>
+    <p class="muted small" id="daily-note"></p>
+    <p class="muted small">Keyboard: <b>←</b> or <b>R</b> for real, <b>→</b> or <b>A</b> for AI.</p>
+
+    <article class="seo">
+      <h2>How the AI image test works</h2>
+      <p>Each round mixes real photos with AI images. You'll see one image at a time and have five seconds to choose. Afterward, you'll get your score, an estimated percentile, and a closer look at any images you missed.</p>
+      <h2>Why five seconds?</h2>
+      <p>The time limit keeps the test focused on your first impression. It asks what you notice at a glance, as you might while scrolling through a feed.</p>
+      <h2>How to spot AI-generated images</h2>
+      <p>Start with details: hands, teeth, text and logos. Do the shadows and reflections make sense? Do objects blend together in the background? These can be useful clues, but real photos can look strange too. Try another round and see what you notice.</p>
+      <div class="faq">
+        <details><summary>Where do the images come from?</summary><p>Real photos come from Wikimedia Commons and include credits. AI images come from openly licensed research datasets and images generated for this project, with the model recorded. Each image is cropped to the same size and saved with the same JPEG settings. <a href="/about">See the sources and licenses.</a></p></details>
+        <details><summary>What do you store?</summary><p>We store your score and average response time, plus counts of how often each image was shown and missed. You don't need an account. Your daily streak and daily results stay in your browser. <a href="/about">Read more about privacy.</a></p></details>
+        <details><summary>What's the average score?</summary><p>The figure above shows how often players answered correctly over the past seven days. If there are no recent results, it shows the average across all tests so far.</p></details>
+      </div>
+    </article>
+  </section>
+
+  <section id="play" class="play hidden">
+    <div class="progress"><span id="count">1 / 20</span><span id="score-live">Score 0</span></div>
+    <div class="timer"><i id="bar"></i></div>
+    <div class="frame"><img id="img" alt="Is this real or AI?"><div class="fb" id="fb"></div></div>
+    <div class="choices">
+      <button class="choice real" id="c-real">Real<small>← or R</small></button>
+      <button class="choice ai" id="c-ai">AI<small>→ or A</small></button>
+    </div>
+  </section>
+
+  <section id="results" class="hidden">
+    <div class="score-box">
+      <div class="score-big" id="r-score">0/20</div>
+      <div class="score-sub" id="r-pct-line"></div>
+      <div class="kpis">
+        <div class="kpi"><b id="r-acc">0%</b><span>accuracy</span></div>
+        <div class="kpi"><b id="r-pct">–</b><span>percentile</span></div>
+        <div class="kpi"><b id="r-ms">0s</b><span>time per image</span></div>
+      </div>
+      <pre class="grid-emoji" id="share-grid"></pre>
+      <div class="share-row">
+        <button class="btn primary" id="btn-share">Share</button>
+        <button class="btn" id="btn-copy">Copy link</button>
+        <a class="btn" id="btn-x" target="_blank" rel="noopener">Post on X</a>
+      </div>
+    </div>
+    <h2 id="misses-h">What fooled you</h2>
+    <div class="misses" id="misses"></div>
+    <div class="row" style="margin-top:24px">
+      <button class="btn primary big" id="btn-again">Play again</button>
+      <button class="btn" id="btn-home">Back to start</button>
+    </div>
+  </section>
+
+  <footer>How well can you tell real photos from AI? Photos include Wikimedia Commons credits. <a href="/about">About</a></footer>
+</main>
+<div class="toast" id="toast"></div>
+<script src="/app.js" defer></script>
+</body>
+</html>

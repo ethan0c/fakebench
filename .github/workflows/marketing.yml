@@ -1,0 +1,28 @@
+# Daily: render a "real or AI?" vertical video and post the live human-accuracy stat.
+name: Marketing
+on:
+  schedule: [{ cron: "0 15 * * *" }]   # 15:00 UTC daily, US morning / EU afternoon
+  workflow_dispatch:
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-inter
+      - name: Render daily video
+        run: python3 -I scripts/make_video.py --site "$SITE_URL" --out out/daily.mp4
+        env: { SITE_URL: "${{ vars.SITE_URL }}" }
+      - name: Post stat + video
+        run: python3 -I scripts/post_stat.py --site "$SITE_URL" --video out/daily.mp4
+        env:
+          SITE_URL: "${{ vars.SITE_URL }}"
+          BSKY_HANDLE: "${{ secrets.BSKY_HANDLE }}"
+          BSKY_APP_PASSWORD: "${{ secrets.BSKY_APP_PASSWORD }}"
+          X_API_KEY: "${{ secrets.X_API_KEY }}"
+          X_API_SECRET: "${{ secrets.X_API_SECRET }}"
+          X_ACCESS_TOKEN: "${{ secrets.X_ACCESS_TOKEN }}"
+          X_ACCESS_SECRET: "${{ secrets.X_ACCESS_SECRET }}"
+          POSTIZ_API_KEY: "${{ secrets.POSTIZ_API_KEY }}"
+          POSTIZ_INTEGRATIONS: "${{ vars.POSTIZ_INTEGRATIONS }}"
+      - uses: actions/upload-artifact@v4
+        with: { name: daily-video, path: out/daily.mp4, retention-days: 7 }

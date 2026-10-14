@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>About FakeBench</title><meta name="description" content="How FakeBench works, where the images come from, and how we calculate scores and percentiles.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="preload" href="/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101318" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="/app.css"></head>
+<body><main class="wrap"><header class="top"><a class="brand" href="/" aria-label="FakeBench home"><img src="/favicon.svg" alt="" width="30" height="30">fakebench</a><nav><a href="/image">Image test</a></nav></header>
+<h1>About</h1>
+<article class="seo">
+<p>FakeBench tests how well people can tell real photos from AI images. You get a score, an estimated percentile, and a chance to review the images you missed. The site also shows the average accuracy across answers from the past seven days.</p>
+<h2>Image sources</h2>
+<p>Real photos come from Wikimedia Commons under CC0, public domain, CC BY or CC BY-SA licenses. Photo credits appear during the test. Any photos you missed also include a license and a link to the original file page in your results.</p>
+<p>AI images come from Rapidata's image datasets on Hugging Face, licensed under CDLA-Permissive-2.0, and from images generated for this project. We record the model used for each AI image.</p>
+<p>Every image is cropped to the same square size and saved with the same JPEG settings. This helps keep differences in file size, shape and compression from giving away the answer.</p>
+<h2>Scores and percentiles</h2>
+<p>The site's accuracy figure is the number of correct answers divided by all answers from the past seven days. If there are no results in that period, we show the average across all tests so far.</p>
+<p>Your percentile estimates how your score compares with other completed rounds. Daily challenges and regular tests are ranked separately, and tied scores share a rank. While there are few results, we blend in a starting estimate that assumes 62 percent accuracy. That estimate has less influence as more rounds are played.</p>
+<h2>Privacy</h2>
+<p>You don't need an account. The app stores each round's score and average response time, plus counts of how often each image was shown and missed. It doesn't attach a name or account ID to your results. Your daily streak and daily results are saved in your browser's local storage.</p>
+<h2>Takedowns</h2>
+<p>If you took one of the Wikimedia Commons photos and would like it removed, open an issue in the project's repository. Include a link to the original photo so we can find it.</p>
+</article></main></body></html>

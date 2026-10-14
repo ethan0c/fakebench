@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FakeBench: your AI detection score</title>
+<meta name="description" content="Can you tell real photos from AI images? Try 20 images with 5 seconds to decide on each. Get your score and see how it compares with other players.">
+<link rel="canonical" href="https://fakebench.pages.dev/">
+<meta property="og:title" content="FakeBench: your AI detection score">
+<meta property="og:description" content="Real or AI? 20 images, 5 seconds each. Take the test and see how your score compares.">
+<meta property="og:image" content="/og/image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101318" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="top"><a class="brand" href="/" aria-label="FakeBench home"><img src="/favicon.svg" alt="" width="30" height="30">fakebench</a><nav><a href="/about">About</a></nav></header>
+  <section class="hero">
+    <div class="hero-copy">
+      <h1>Can you still tell what's real?</h1>
+      <p class="lede">Real photo or AI? You have five seconds to decide on each of 20 images. See how many you get right, how your score compares, and which images fooled you.</p>
+      <div class="row"><a class="btn primary big" href="/image">Take the image test</a></div>
+      <p class="fineprint">Free to play. No account needed. Real photos include credits.</p>
+    </div>
+    <a class="specimen" href="/image" id="specimen" aria-label="Preview: two real photos and two AI images. Take the test.">
+      <div class="specimen-grid"><i></i><i></i><i></i><i></i></div>
+      <span class="specimen-cap">Two of these are real photos. Two are AI.</span>
+    </a>
+  </section>
+
+  <p class="stat" id="stat"><span class="stat-num"></span><span class="stat-text">Loading this week's numbers…</span></p>
+
+  <section class="index">
+    <h2>Tests</h2>
+    <ul class="test-list">
+      <li><a href="/image"><span class="t-name">Images</span><span class="t-desc">Real photo or AI? 20 images, 5 seconds each.</span><span class="t-go">Start</span></a></li>
+      <li class="off"><span class="t-name">Text</span><span class="t-desc">Written by a person or AI?</span><span class="t-go">Coming soon</span></li>
+      <li class="off"><span class="t-name">Voices</span><span class="t-desc">A person's voice or an AI clone?</span><span class="t-go">Coming soon</span></li>
+      <li class="off"><span class="t-name">Faces</span><span class="t-desc">Does this person exist?</span><span class="t-go">Coming soon</span></li>
+    </ul>
+  </section>
+  <article class="seo">
+    <h2>See how your score compares</h2>
+    <p>After each test, you get a score and an estimated percentile to show where you stand among other results. You can also look back at the images you missed, with the model name for AI images and the source for real photos.</p>
+    <h2>How are people doing?</h2>
+    <p>FakeBench tracks how often players get the answer right over the past seven days. Each completed test contributes to that average. It reflects results on this site, so it can change as different people play and new images are added.</p>
+  </article>
+  <footer>Tracking how well people can tell real photos from AI. <a href="/about">How it works and image sources</a></footer>
+</main>
+<script>
+(async()=>{
+  const box=document.getElementById('stat'),num=box.querySelector('.stat-num'),txt=box.querySelector('.stat-text');
+  try{const s=await (await fetch('/api/stats?test=image')).json();const weekly=s.accuracy_week!=null,a=s.accuracy_week??s.accuracy;
+    if(a==null){txt.textContent="No results yet. Take the first test.";}
+    else{num.textContent=a+'%';txt.textContent=`of answers on FakeBench were correct ${weekly?'over the past seven days':'across all tests so far'}${weekly&&s.accuracy_prev!=null&&s.accuracy_prev!==a?`, ${a>s.accuracy_prev?'up':'down'} from ${s.accuracy_prev}% in the previous 30 days`:''}.`;}
+  }catch{txt.textContent='Real or AI? Take the test and see how you do.';}
+})();
+(async()=>{
+  const sp=document.getElementById('specimen');
+  try{const d=await (await fetch('/api/round?test=image&mode=round')).json();
+    const pick=[...d.items.filter(i=>i.label==='ai').slice(0,2),...d.items.filter(i=>i.label==='real').slice(0,2)];
+    if(pick.length<4)throw 0;
+    pick.sort(()=>Math.random()-.5);
+    sp.querySelectorAll('i').forEach((cell,k)=>{const im=new Image();im.alt='';im.onload=()=>cell.classList.add('in');im.src=pick[k].src;cell.appendChild(im);});
+  }catch{sp.classList.add('hidden');}
+})();
+</script>
+</body>
+</html>

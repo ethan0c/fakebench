@@ -1,0 +1,2 @@
+# Copy to .dev.vars for local dev. Production secrets go through `wrangler secret put`.
+# none required for the site itself

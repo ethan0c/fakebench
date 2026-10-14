@@ -1,0 +1,9 @@
+node_modules/
+.wrangler/
+.dev.vars
+data/raw*/
+out/
+*.log
+.DS_Store
+.venv/
+data/shards/

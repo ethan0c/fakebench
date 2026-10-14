@@ -1,0 +1,36 @@
+# Weekly: pull fresh real + AI images, rebuild the manifest, commit. The push triggers Deploy.
+name: Refresh content
+on:
+  schedule: [{ cron: "5 0 * * 1" }]   # Mondays 00:05 UTC, right after the daily rolls over
+  workflow_dispatch:
+    inputs:
+      count: { description: "images per class to add", default: "60" }
+permissions: { contents: write }
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg && pip install -q pyarrow
+      - name: Fetch AI images (known model, permissive license) from parquet shards
+        run: |
+          python3 -I scripts/extract_parquet.py --dataset Rapidata/OpenAI-4o_t2i_human_preference --shards random:2 --count ${{ github.event.inputs.count || 60 }} --per-model 10
+          for d in Imagen4 Seedream-3 Hidream Imagen-4-ultra-24-7-25 Recraft-v3-24-7-25; do
+            python3 -I scripts/extract_parquet.py --dataset Rapidata/${d}_t2i_human_preference --shards random:1 --count 12 || true
+          done
+        env: { HF_TOKEN: "${{ secrets.HF_TOKEN }}" }
+      - name: Generate fresh AI images with current models (only when a key is set)
+        if: ${{ env.FAL_KEY != '' }}
+        run: python3 -I scripts/generate_fake.py --count 30
+        env: { FAL_KEY: "${{ secrets.FAL_KEY }}" }
+      - name: Fetch matching real photos
+        run: python3 -I scripts/fetch_real.py --count ${{ github.event.inputs.count || 60 }}
+      - name: Rebuild manifest
+        run: python3 -I scripts/build_manifest.py
+      - name: Keep the pool bounded
+        run: python3 -I scripts/prune_pool.py --max-per-class 600
+      - name: Commit
+        run: |
+          git config user.name "fakebench-bot" && git config user.email "bot@users.noreply.github.com"
+          git add public/media && git commit -m "content: weekly refresh $(date -u +%F)" || echo "nothing to commit"
+          git push
