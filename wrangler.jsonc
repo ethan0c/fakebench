@@ -35,7 +35,7 @@
 	},
 	"vars": {
 		"SITE_NAME": "FakeBench",
-		"SITE_URL": "https://fakebench.pages.dev"
+		"SITE_URL": "https://fakebench.ethanlma.workers.dev"
 	},
 	"triggers": {
 		"crons": [

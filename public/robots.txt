@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /share/
-Sitemap: https://fakebench.pages.dev/sitemap.xml
+Sitemap: https://fakebench.ethanlma.workers.dev/sitemap.xml

@@ -31,7 +31,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--manifest", default="public/media/manifest.json")
     ap.add_argument("--media-root", default="public")
-    ap.add_argument("--site", default="https://fakebench.pages.dev")
+    ap.add_argument("--site", default="https://fakebench.ethanlma.workers.dev")
     ap.add_argument("--out", default="out/daily.mp4")
     ap.add_argument("--n", type=int, default=4)
     ap.add_argument("--show", type=int, default=3)
