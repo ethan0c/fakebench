@@ -15,7 +15,7 @@
 	},
 	"d1_databases": [
 		{
-			"binding": "fakebench",
+			"binding": "DB",
 			"database_name": "fakebench",
 			"database_id": "bf475fc3-211f-450b-b936-a53d5299c424"
 		}
