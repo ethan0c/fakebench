@@ -1,4 +1,5 @@
 import { ImageResponse, loadGoogleFont } from "workers-og";
+import { EmailMessage } from "cloudflare:email";
 
 // ---------- config ----------
 const TESTS = {
@@ -196,7 +197,30 @@ async function apiResult(req, env) {
 const LEAD_KINDS = ["company", "school", "other"];
 const LEAD_SIZES = ["1-25", "26-100", "101-500", "500+"];
 const LEAD_PLANS = ["pilot", "team", "school", "organization"];
-async function apiLead(req, env) {
+// Plain-text alert to the inbox bound in wrangler.jsonc (Cloudflare Email Routing). Reply goes to the lead.
+const LEAD_FROM = "pilots@fakebench.com", LEAD_TO = "hello@ocelabs.xyz";
+async function notifyLead(env, lead) {
+  if (!env.MAILER) return;
+  const oneLine = (s) => String(s ?? "").replace(/[\r\n]+/g, " ");
+  const b64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+  const body = [
+    `${lead.name} from ${lead.org} asked for a pilot.`, "",
+    `Email:  ${lead.email}`, `Role:   ${lead.role || "-"}`, `Type:   ${lead.kind || "-"}`,
+    `People: ${lead.size || "-"}`, `Plan:   ${lead.plan || "-"}`, "", lead.message ? `Message:\n${lead.message}` : "No message.", "",
+    "Reply to this email to answer them directly. All requests:",
+    'npx wrangler d1 execute fakebench --remote --command "SELECT * FROM leads ORDER BY id DESC"',
+  ].join("\r\n");
+  const raw = [
+    `From: FakeBench <${LEAD_FROM}>`, `To: ${LEAD_TO}`, `Reply-To: ${oneLine(lead.email)}`,
+    `Subject: =?UTF-8?B?${b64(oneLine(`New pilot request: ${lead.org}${lead.size ? ` (${lead.size} people)` : ""}`))}?=`,
+    `Message-ID: <${crypto.randomUUID()}@fakebench.com>`, `Date: ${new Date().toUTCString()}`,
+    "MIME-Version: 1.0", 'Content-Type: text/plain; charset="utf-8"', "Content-Transfer-Encoding: base64", "",
+    b64(body).replace(/.{76}/g, "$&\r\n"),
+  ].join("\r\n");
+  await env.MAILER.send(new EmailMessage(LEAD_FROM, LEAD_TO, raw));
+}
+
+async function apiLead(req, env, ctx) {
   if (req.method !== "POST") return bad("POST only", 405);
   if (env.RL) {
     const { success } = await env.RL.limit({ key: `lead:${req.headers.get("cf-connecting-ip") || "unknown"}` });
@@ -215,6 +239,8 @@ async function apiLead(req, env) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(lead.email)) return bad("a valid work email is required");
   await env.DB.prepare("INSERT INTO leads (name, email, org, role, kind, size, plan, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
     .bind(lead.name, lead.email, lead.org, lead.role, lead.kind, lead.size, lead.plan, lead.message).run();
+  // the lead is already saved, so a mail failure only gets logged
+  ctx.waitUntil(notifyLead(env, lead).catch((e) => console.error("lead email failed", e)));
   return json({ ok: true });
 }
 
@@ -337,7 +363,7 @@ export default {
       if (path === "/api/result") return apiResult(req, env);
       if (path === "/api/stats") return apiStats(req, env, url);
       if (path === "/api/catalog") return apiCatalog(req, env, url);
-      if (path === "/api/lead") return apiLead(req, env);
+      if (path === "/api/lead") return apiLead(req, env, ctx);
       if (path === "/api/health") return json({ ok: true, time: new Date().toISOString() });
       let m;
       if (path === "/og/overlay.png") return overlayCard(req, env, url);

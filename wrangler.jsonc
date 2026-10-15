@@ -18,6 +18,9 @@
 		{ "pattern": "fakebench.com", "custom_domain": true },
 		{ "pattern": "www.fakebench.com", "custom_domain": true }
 	],
+	"send_email": [
+		{ "name": "MAILER", "destination_address": "hello@ocelabs.xyz" }
+	],
 	"d1_databases": [
 		{
 			"binding": "DB",
