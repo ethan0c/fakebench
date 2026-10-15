@@ -7,7 +7,7 @@
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const todayUTC = () => new Date().toISOString().slice(0, 10);
-  const screens = { start: $("#start"), play: $("#play"), results: $("#results") };
+  const screens = { start: $("#start"), ready: $("#ready"), play: $("#play"), results: $("#results") };
   const show = (name) => { for (const k in screens) screens[k].classList.toggle("hidden", k !== name); window.scrollTo({ top: 0 }); };
   const toast = (msg) => { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 1800); };
   const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
@@ -15,8 +15,9 @@
   // ---------- sound: tiny Web Audio synth, no files. Preference stays in this browser. ----------
   const sfx = (() => {
     let ctx = null, on = store.get("fb:sound", true);
-    const ac = () => {
+    const ac = (create = true) => {
       const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
+      if (!ctx && !create) return null;
       if (!ctx) ctx = new C();
       if (ctx.state === "suspended") ctx.resume();
       return ctx;
@@ -31,8 +32,11 @@
     }
     const play = (fn) => { if (on) try { fn(); } catch {} };
     return {
+      ctx: ac,
       get on() { return on; },
       set(v) { on = v; store.set("fb:sound", v); },
+      count: (n) => play(() => tone(n === 1 ? 784 : 587.33, 0, 0.11, "triangle", 0.1)),
+      go: () => play(() => tone(1046.5, 0, 0.18, "triangle", 0.12)),
       good: (combo) => play(() => { const f = 523.25 * Math.pow(2, Math.min(combo, 10) / 12); tone(f, 0, 0.12); tone(f * 1.5, 0.07, 0.2); }),
       bad: () => play(() => tone(240, 0, 0.26, "sawtooth", 0.05, 120)),
       tick: () => play(() => tone(1250, 0, 0.035, "square", 0.025)),
@@ -40,6 +44,45 @@
       end: () => play(() => [392, 523.25].forEach((f, i) => tone(f, i * 0.11, 0.24, "triangle", 0.09))),
     };
   })();
+  // ---------- background music: off until the player turns it on; fetched only then ----------
+  const music = (() => {
+    const LEVEL = 0.22;
+    let on = store.get("fb:music", false), buf = null, loading = null, src = null, gain = null;
+    async function startLoop() {
+      const c = sfx.ctx(); if (!c || src) return;
+      try {
+        loading ??= fetch("/media/music/lounge.mp3").then((r) => r.arrayBuffer())
+          .then((a) => new Promise((res, rej) => c.decodeAudioData(a, res, rej)));
+        buf ??= await loading;
+        if (!on || src) return;
+        gain = c.createGain(); gain.gain.value = 0.0001; gain.connect(c.destination);
+        src = c.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(gain); src.start();
+        gain.gain.exponentialRampToValueAtTime(LEVEL, c.currentTime + 1.5);
+      } catch { loading = null; }
+    }
+    function stopLoop() {
+      if (!src) return;
+      const c = sfx.ctx(), s = src, g = gain; src = gain = null;
+      g.gain.setTargetAtTime(0.0001, c.currentTime, 0.15);
+      setTimeout(() => { try { s.stop(); } catch {} g.disconnect(); }, 800);
+    }
+    return {
+      get on() { return on; },
+      set(v) { on = v; store.set("fb:music", v); v ? startLoop() : stopLoop(); },
+      resume() { if (on) startLoop(); },
+      duck(low) { if (gain) gain.gain.setTargetAtTime(low ? LEVEL * 0.35 : LEVEL, sfx.ctx().currentTime, 0.12); },
+    };
+  })();
+  const musBtn = $("#mus");
+  if (musBtn) {
+    musBtn.setAttribute("aria-pressed", String(music.on));
+    musBtn.onclick = () => { music.set(!music.on); musBtn.setAttribute("aria-pressed", String(music.on)); };
+  }
+  // browsers only allow audio after a gesture, so a saved "music on" starts on the first click or key
+  const wake = () => { music.resume(); removeEventListener("pointerdown", wake); removeEventListener("keydown", wake); };
+  addEventListener("pointerdown", wake); addEventListener("keydown", wake);
+  document.addEventListener("visibilitychange", () => { const c = sfx.ctx(false); if (c) document.hidden ? c.suspend() : c.resume(); });
+
   const sndBtn = $("#snd");
   if (sndBtn) {
     sndBtn.setAttribute("aria-pressed", String(sfx.on));
@@ -71,10 +114,32 @@
     if (!r.ok) throw new Error("round");
     return r.json();
   }
-  function preload(items) {
+  function preload(items, onEach = () => {}) {
     return Promise.all(items.map((it) => new Promise((res) => {
-      const im = new Image(); im.onload = im.onerror = () => res(); im.src = it.src; setTimeout(res, 8000);
+      let done = false; const fin = () => { if (!done) { done = true; onEach(); res(); } };
+      const im = new Image(); im.onload = im.onerror = fin; im.src = it.src; setTimeout(fin, 8000);
     })));
+  }
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // 3-2-1 while the round's images load; if they're still loading after "1", the bar keeps showing progress
+  async function getReady(items, label) {
+    const num = $("#ready-num"), bar = $("#ready-bar"), lab = $("#ready-label");
+    let loaded = 0, counting = true;
+    const progress = () => {
+      bar.style.transform = `scaleX(${loaded / items.length})`;
+      if (!counting) lab.textContent = `Loading images ${loaded}/${items.length}`;
+    };
+    lab.textContent = label || "Get ready"; num.classList.remove("hidden"); progress();
+    show("ready");
+    const loading = preload(items, () => { loaded++; progress(); });
+    for (const n of [3, 2, 1]) {
+      num.textContent = n; num.classList.remove("beat"); void num.offsetWidth; num.classList.add("beat");
+      sfx.count(n); await wait(calm() ? 250 : 550);
+    }
+    counting = false;
+    if (loaded < items.length) { num.classList.add("hidden"); progress(); }
+    await loading;
+    sfx.go();
   }
 
   // ---------- live stat on start screen ----------
@@ -107,10 +172,11 @@
       seconds = data.seconds || 5;
       game.items = data.items; game.idx = 0; game.answers = []; game.combo = 0; game.day = data.day; game.data = data;
       $("#round-label").textContent = mode === "level" ? `Level ${data.level} · ${data.level_name}` : mode === "cat" ? data.cat_name : mode === "daily" ? "Daily" : "";
-      await preload(game.items);
+      await getReady(game.items, $("#round-label").textContent);
       show("play");
       next();
     } catch (e) {
+      show("start");
       toast("Couldn't load the test. Try again.");
     } finally { btns.forEach((b) => b && (b.disabled = false)); }
   }
@@ -127,8 +193,8 @@
     $("#fb").className = "fb"; game.locked = false; game.t0 = performance.now();
     game.timer = setTimeout(() => answer(null), seconds * 1000);
     // last two seconds: bar turns red and ticks
-    $(".timer").classList.remove("low");
-    game.ticks = [2, 1].filter((s) => s < seconds).map((s) => setTimeout(() => { $(".timer").classList.add("low"); sfx.tick(); }, (seconds - s) * 1000));
+    $(".timer").classList.remove("low"); music.duck(false);
+    game.ticks = [2, 1].filter((s) => s < seconds).map((s) => setTimeout(() => { $(".timer").classList.add("low"); music.duck(true); sfx.tick(); }, (seconds - s) * 1000));
   }
   function renderLive(bump) {
     const live = $("#score-live");

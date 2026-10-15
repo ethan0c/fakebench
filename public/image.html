@@ -20,7 +20,7 @@
 </head>
 <body data-test="image">
 <main class="wrap">
-  <header class="top"><a class="brand" href="/" aria-label="FakeBench home"><img src="/favicon.svg" alt="" width="30" height="30">fakebench</a><nav><a href="/">All tests</a><a href="/about">About</a><button class="snd" id="snd" type="button" aria-label="Sound" aria-pressed="true"><svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg><svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 6 6M22 9l-6 6"/></svg></button></nav></header>
+  <header class="top"><a class="brand" href="/" aria-label="FakeBench home"><img src="/favicon.svg" alt="" width="30" height="30">fakebench</a><nav><a href="/">All tests</a><a href="/about">About</a><button class="snd" id="mus" type="button" aria-label="Background music" aria-pressed="false"><svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M3 3l18 18"/></svg></button><button class="snd" id="snd" type="button" aria-label="Sound" aria-pressed="true"><svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg><svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 6 6M22 9l-6 6"/></svg></button></nav></header>
 
   <section id="start">
     <h1>AI Image Test</h1>
@@ -62,10 +62,16 @@
       <p>Start with details: hands, teeth, text and logos. Do the shadows and reflections make sense? Do objects blend together in the background? These can be useful clues, but real photos can look strange too. Try another round and see what you notice.</p></div>
       <div class="faq">
         <details><summary>Where do the images come from?</summary><p>Real photos come from Wikimedia Commons and include credits. AI images come from openly licensed research datasets and images generated for this project, with the model recorded. Each image is cropped to the same size and saved with the same JPEG settings. <a href="/about">See the sources and licenses.</a></p></details>
-        <details><summary>What do you store?</summary><p>We store your score and average response time, plus counts of how often each image was shown and missed. You don't need an account. No cookies, no ads, no trackers. Your levels, daily streak and sound setting stay in your browser. <a href="/about">Read more about privacy.</a></p></details>
+        <details><summary>What do you store?</summary><p>We store your score and average response time, plus counts of how often each image was shown and missed. You don't need an account. No cookies, no ads, no trackers. Your levels, daily streak and sound settings stay in your browser. <a href="/about">Read more about privacy.</a></p></details>
         <details><summary>What's the average score?</summary><p>The figure above shows how often players answered correctly over the past seven days. If there are no recent results, it shows the average across all tests so far.</p></details>
       </div>
     </article>
+  </section>
+
+  <section id="ready" class="ready hidden" aria-live="polite">
+    <div class="ready-num" id="ready-num">3</div>
+    <p class="ready-label" id="ready-label">Get ready</p>
+    <div class="ready-bar"><i id="ready-bar"></i></div>
   </section>
 
   <section id="play" class="play hidden">
