@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FakeBench for Teams: AI image and deepfake awareness training</title>
+<meta name="description" content="Find out how often your team gets fooled by AI images, then train them to spot fakes. Private tests, team results and a report for your security or training lead. Start with a free 30-day pilot.">
+<link rel="canonical" href="https://fakebench.com/teams">
+<meta property="og:title" content="FakeBench for Teams">
+<meta property="og:description" content="How often does your team get fooled by AI images? Private tests, team results and a free 30-day pilot.">
+<meta property="og:image" content="/og/image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101318" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="top"><a class="brand" href="/" aria-label="FakeBench home"><img src="/favicon.svg" alt="" width="30" height="30">fakebench</a><nav><a href="/image">Image test</a><a href="/about">About</a></nav></header>
+
+  <section class="hero teams-hero">
+    <div class="hero-copy">
+      <p class="eyebrow">FakeBench for Teams</p>
+      <h1>Would your team spot a fake?</h1>
+      <p class="lede">AI images now pass as real photos in fake invoices, scam profiles and phishing messages. FakeBench measures how often your people get fooled, shows which kinds of images catch them out, and trains them to slow down and check.</p>
+      <div class="row"><a class="btn primary big" href="#pilot">Start a free pilot</a><a class="btn big" href="/image">Try the public test</a></div>
+      <p class="fineprint">30 days free. No card needed. We set it up for you.</p>
+    </div>
+    <div class="teams-stat" id="teams-stat">
+      <span class="stat-num" id="ts-num"></span>
+      <span class="stat-text" id="ts-text">Most people think they can tell AI images from real photos. Then they take the test.</span>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="sec-head"><h2>What your team gets</h2></div>
+    <ul class="features">
+      <li><b>A private test for your team</b><span>One link for everyone. No accounts to create and no software to install.</span></li>
+      <li><b>Results for the whole team</b><span>See scores by person or by team, and how they compare with thousands of other players.</span></li>
+      <li><b>A report you can act on</b><span>Find out who's most at risk and which kinds of images fool your people most often. Ready for your security or training lead.</span></li>
+      <li><b>Images from the newest models</b><span>The image set is refreshed every month, so the test keeps up with what scammers are actually using.</span></li>
+      <li><b>Certificates of completion</b><span>Proof of training for compliance records, staff files or class credit.</span></li>
+      <li><b>Custom image sets</b><span>Add images that match your world, such as fake invoices, ID photos or product shots.</span></li>
+    </ul>
+  </section>
+
+  <section class="block">
+    <div class="sec-head"><h2>Pricing</h2><p class="muted">Every plan starts with a free 30-day pilot.</p></div>
+    <div class="plans">
+      <div class="plan"><h3>Team</h3><p class="price"><b>$199</b> per month</p><p class="muted">Up to 100 people. For companies, agencies and newsrooms.</p></div>
+      <div class="plan featured"><h3>School</h3><p class="price"><b>$79</b> per month</p><p class="muted">One school, unlimited students. Built for media literacy classes.</p></div>
+      <div class="plan"><h3>Organization</h3><p class="price"><b>Custom</b></p><p class="muted">More than 100 people, custom image sets, or training built into your own platform.</p></div>
+    </div>
+  </section>
+
+  <section class="block pilot" id="pilot">
+    <div class="sec-head"><h2>Start a free pilot</h2><p class="muted">Tell us about your team. We'll reply within two working days to set it up.</p></div>
+    <form id="lead-form" class="lead-form" novalidate>
+      <label>Your name<input name="name" autocomplete="name" required maxlength="120"></label>
+      <label>Work email<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+      <label>Organization<input name="org" autocomplete="organization" required maxlength="160"></label>
+      <label>Your role<input name="role" autocomplete="organization-title" maxlength="120" placeholder="For example, IT manager or teacher"></label>
+      <label>Type<select name="kind"><option value="company">Company</option><option value="school">School</option><option value="other">Other</option></select></label>
+      <label>Number of people<select name="size"><option value="1-25">1 to 25</option><option value="26-100">26 to 100</option><option value="101-500">101 to 500</option><option value="500+">More than 500</option></select></label>
+      <label>Plan you're interested in<select name="plan"><option value="pilot">Not sure yet, just the pilot</option><option value="team">Team</option><option value="school">School</option><option value="organization">Organization</option></select></label>
+      <label class="wide"><span>Anything we should know? <span class="muted">(optional)</span></span><textarea name="message" rows="3" maxlength="1500"></textarea></label>
+      <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+      <div class="wide row"><button class="btn primary big" type="submit" id="lead-btn">Request a pilot</button><span class="form-msg" id="lead-msg" role="status"></span></div>
+      <p class="wide fineprint">We only use these details to reply about the pilot. See <a href="/about">privacy</a>.</p>
+    </form>
+    <div class="lead-done hidden" id="lead-done"><h3>Thanks, we've got it.</h3><p class="muted">We'll email you within two working days to set up your pilot. In the meantime, see how you do on the <a href="/image">public test</a>.</p></div>
+  </section>
+
+  <footer><span>FakeBench measures how well people can tell real photos from AI. <a href="/about">About</a></span><span class="made">Made by <a href="https://ocelabs.xyz">OCE Labs</a></span></footer>
+</main>
+<script>
+(async()=>{
+  try{const s=await (await fetch('/api/stats?test=image')).json();const a=s.accuracy_week??s.accuracy;
+    if(a!=null&&s.rounds>=10){document.getElementById('ts-num').textContent=(100-a)+'%';
+      document.getElementById('ts-text').textContent='of answers on FakeBench were wrong '+(s.accuracy_week!=null?'over the past seven days':'so far')+'. Players had five seconds to decide whether each image was a real photo or AI.';}
+  }catch{}
+})();
+(()=>{
+  const f=document.getElementById('lead-form'),msg=document.getElementById('lead-msg'),btn=document.getElementById('lead-btn');
+  f.addEventListener('submit',async(e)=>{
+    e.preventDefault();msg.textContent='';
+    const d=Object.fromEntries(new FormData(f));
+    if(!d.name.trim()||!d.org.trim()){msg.textContent='Please add your name and organization.';return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email.trim())){msg.textContent='Please enter a valid work email.';return;}
+    btn.disabled=true;btn.textContent='Sending…';
+    try{const r=await fetch('/api/lead',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(d)});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||'error');
+      f.classList.add('hidden');document.getElementById('lead-done').classList.remove('hidden');
+    }catch(err){msg.textContent=err.message==='slow down'?'Too many requests. Wait a minute and try again.':"Couldn't send that. Check the form and try again.";btn.disabled=false;btn.textContent='Request a pilot';}
+  });
+})();
+</script>
+</body>
+</html>

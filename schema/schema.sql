@@ -35,3 +35,18 @@ CREATE TABLE IF NOT EXISTS daily_rollup (
   total INTEGER NOT NULL,
   PRIMARY KEY (test, day)
 );
+
+-- Pilot requests from /teams. Read them with:
+--   npx wrangler d1 execute fakebench --remote --command "SELECT * FROM leads ORDER BY id DESC"
+CREATE TABLE IF NOT EXISTS leads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  org TEXT NOT NULL,
+  role TEXT,
+  kind TEXT,
+  size TEXT,
+  plan TEXT,
+  message TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

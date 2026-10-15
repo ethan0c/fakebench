@@ -192,6 +192,32 @@ async function apiResult(req, env) {
   return json({ ok: true, ...p, ...(b.mode === "level" ? { passed: b.score >= PASS_SCORE } : {}) });
 }
 
+// Pilot requests from the /teams page.
+const LEAD_KINDS = ["company", "school", "other"];
+const LEAD_SIZES = ["1-25", "26-100", "101-500", "500+"];
+const LEAD_PLANS = ["pilot", "team", "school", "organization"];
+async function apiLead(req, env) {
+  if (req.method !== "POST") return bad("POST only", 405);
+  if (env.RL) {
+    const { success } = await env.RL.limit({ key: `lead:${req.headers.get("cf-connecting-ip") || "unknown"}` });
+    if (!success) return bad("slow down", 429);
+  }
+  if (Number(req.headers.get("content-length") || 0) > 4096) return bad("too large", 413);
+  let b; try { b = await req.json(); } catch { return bad("bad json"); }
+  if (b.website) return json({ ok: true }); // honeypot: bots fill every field
+  const str = (v, max) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+  const lead = {
+    name: str(b.name, 120), email: str(b.email, 200).toLowerCase(), org: str(b.org, 160), role: str(b.role, 120),
+    kind: LEAD_KINDS.includes(b.kind) ? b.kind : null, size: LEAD_SIZES.includes(b.size) ? b.size : null,
+    plan: LEAD_PLANS.includes(b.plan) ? b.plan : null, message: str(b.message, 1500),
+  };
+  if (!lead.name || !lead.org) return bad("name and organization are required");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(lead.email)) return bad("a valid work email is required");
+  await env.DB.prepare("INSERT INTO leads (name, email, org, role, kind, size, plan, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(lead.name, lead.email, lead.org, lead.role, lead.kind, lead.size, lead.plan, lead.message).run();
+  return json({ ok: true });
+}
+
 async function apiStats(req, env, url) {
   const test = url.searchParams.get("test") || "image";
   if (!TESTS[test]) return bad("unknown test", 404);
@@ -311,6 +337,7 @@ export default {
       if (path === "/api/result") return apiResult(req, env);
       if (path === "/api/stats") return apiStats(req, env, url);
       if (path === "/api/catalog") return apiCatalog(req, env, url);
+      if (path === "/api/lead") return apiLead(req, env);
       if (path === "/api/health") return json({ ok: true, time: new Date().toISOString() });
       let m;
       if (path === "/og/overlay.png") return overlayCard(req, env, url);
