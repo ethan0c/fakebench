@@ -38,25 +38,32 @@
     <h2>Tests</h2>
     <ul class="test-list">
       <li><a href="/image"><span class="t-name">Images</span><span class="t-desc">Real photo or AI? A 20-image benchmark, 10 levels, and practice by subject.</span><span class="t-go">Start</span></a></li>
-      <li class="off"><span class="t-name">Text</span><span class="t-desc">Written by a person or AI?</span><span class="t-go">Coming soon</span></li>
-      <li class="off"><span class="t-name">Voices</span><span class="t-desc">A person's voice or an AI clone?</span><span class="t-go">Coming soon</span></li>
-      <li class="off"><span class="t-name">Faces</span><span class="t-desc">Does this person exist?</span><span class="t-go">Coming soon</span></li>
+      <li class="soon"><b>Coming soon</b><span class="chip">Text</span><span class="chip">Voices</span><span class="chip">Faces</span></li>
     </ul>
   </section>
-  <article class="seo">
-    <h2>See how your score compares</h2>
-    <p>After each test, you get a score and an estimated percentile to show where you stand among other results. You can also look back at the images you missed, with the model name for AI images and the source for real photos.</p>
-    <h2>How are people doing?</h2>
-    <p>FakeBench tracks how often players get the answer right over the past seven days. Each completed test contributes to that average. It reflects results on this site, so it can change as different people play and new images are added.</p>
+  <section class="index hidden" id="fools-sec">
+    <h2>Images that fool the most people</h2>
+    <ul class="fools" id="fools"></ul>
+  </section>
+  <article class="seo cols">
+    <div><h2>See how your score compares</h2>
+    <p>After each test, you get a score and an estimated percentile to show where you stand among other results. You can also look back at the images you missed, with the model name for AI images and the source for real photos.</p></div>
+    <div><h2>How are people doing?</h2>
+    <p>FakeBench tracks how often players get the answer right over the past seven days. Each completed test contributes to that average. It reflects results on this site, so it can change as different people play and new images are added.</p></div>
   </article>
-  <footer>Tracking how well people can tell real photos from AI. <a href="/about">How it works and image sources</a></footer>
+  <footer><span>Tracking how well people can tell real photos from AI. <a href="/about">How it works and image sources</a></span><span class="made">Made by <a href="https://ocelabs.xyz">OCE Labs</a></span></footer>
 </main>
 <script>
+function countUp(n,to){if(matchMedia('(prefers-reduced-motion: reduce)').matches){n.textContent=to+'%';return}
+  const t0=performance.now();const f=t=>{const k=Math.min(1,(t-t0)/900);n.textContent=Math.round(to*(1-Math.pow(1-k,3)))+'%';if(k<1)requestAnimationFrame(f)};requestAnimationFrame(f)}
 (async()=>{
   const box=document.getElementById('stat'),num=box.querySelector('.stat-num'),txt=box.querySelector('.stat-text');
   try{const s=await (await fetch('/api/stats?test=image')).json();const weekly=s.accuracy_week!=null,a=s.accuracy_week??s.accuracy;
-    if(a==null){txt.textContent="No results yet. Take the first test.";}
-    else{num.textContent=a+'%';txt.textContent=`of answers on FakeBench were correct ${weekly?'over the past seven days':'across all tests so far'}${weekly&&s.accuracy_prev!=null&&s.accuracy_prev!==a?`, ${a>s.accuracy_prev?'up':'down'} from ${s.accuracy_prev}% in the previous 30 days`:''}.`;}
+    if(a==null||s.rounds<10){txt.textContent="New benchmark. Early results are coming in, so take the test and help set the baseline.";}
+    else{countUp(num,a);txt.textContent=`of answers on FakeBench were correct ${weekly?'over the past seven days':'across all tests so far'}${weekly&&s.accuracy_prev!=null&&s.accuracy_prev!==a?`, ${a>s.accuracy_prev?'up':'down'} from ${s.accuracy_prev}% in the previous 30 days`:''}.`;}
+    if(s.hardest&&s.hardest.length>=3){const ul=document.getElementById('fools');
+      ul.innerHTML=s.hardest.map(h=>`<li><a href="/image"><img src="/media/img/${encodeURIComponent(h.id)}.jpg" alt="" loading="lazy"><b>${h.fooled}%</b>got this wrong</a></li>`).join('');
+      document.getElementById('fools-sec').classList.remove('hidden');}
   }catch{txt.textContent='Real or AI? Take the test and see how you do.';}
 })();
 (async()=>{

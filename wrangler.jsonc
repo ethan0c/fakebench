@@ -13,6 +13,7 @@
 			"/share/*"
 		]
 	},
+	"workers_dev": true,
 	"routes": [
 		{ "pattern": "fakebench.com", "custom_domain": true },
 		{ "pattern": "www.fakebench.com", "custom_domain": true }

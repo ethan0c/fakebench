@@ -12,6 +12,57 @@
   const toast = (msg) => { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 1800); };
   const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 
+  // ---------- sound: tiny Web Audio synth, no files. Preference stays in this browser. ----------
+  const sfx = (() => {
+    let ctx = null, on = store.get("fb:sound", true);
+    const ac = () => {
+      const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
+      if (!ctx) ctx = new C();
+      if (ctx.state === "suspended") ctx.resume();
+      return ctx;
+    };
+    function tone(freq, at, dur, type = "triangle", vol = 0.12, slideTo) {
+      const c = ac(); if (!c) return;
+      const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + at;
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + 0.03);
+    }
+    const play = (fn) => { if (on) try { fn(); } catch {} };
+    return {
+      get on() { return on; },
+      set(v) { on = v; store.set("fb:sound", v); },
+      good: (combo) => play(() => { const f = 523.25 * Math.pow(2, Math.min(combo, 10) / 12); tone(f, 0, 0.12); tone(f * 1.5, 0.07, 0.2); }),
+      bad: () => play(() => tone(240, 0, 0.26, "sawtooth", 0.05, 120)),
+      tick: () => play(() => tone(1250, 0, 0.035, "square", 0.025)),
+      win: () => play(() => [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.09, 0.3))),
+      end: () => play(() => [392, 523.25].forEach((f, i) => tone(f, i * 0.11, 0.24, "triangle", 0.09))),
+    };
+  })();
+  const sndBtn = $("#snd");
+  if (sndBtn) {
+    sndBtn.setAttribute("aria-pressed", String(sfx.on));
+    sndBtn.onclick = () => { sfx.set(!sfx.on); sndBtn.setAttribute("aria-pressed", String(sfx.on)); if (sfx.on) sfx.good(0); };
+  }
+  const calm = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  function confetti() {
+    if (calm()) return;
+    const box = el("div", "confetti"), cols = ["var(--brand)", "var(--real)", "var(--ai)", "#ffc53d"];
+    for (let i = 0; i < 70; i++) {
+      const c = el("i");
+      c.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % 4]};animation-delay:${Math.random() * 0.3}s;animation-duration:${1.6 + Math.random() * 1.2}s;--x:${(Math.random() - 0.5) * 220}px;--r:${Math.random() * 720 - 360}deg`;
+      box.appendChild(c);
+    }
+    document.body.appendChild(box); setTimeout(() => box.remove(), 3500);
+  }
+  function countUp(node, to, suffix = "") {
+    if (calm() || !window.requestAnimationFrame) { node.textContent = to + suffix; return; }
+    const t0 = performance.now(), dur = 900;
+    const step = (t) => { const k = Math.min(1, (t - t0) / dur); node.textContent = Math.round(to * (1 - Math.pow(1 - k, 3))) + suffix; if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+
   let prefetched = null; // next random round, fetched while results are on screen
   let seconds = 5;
 
@@ -27,22 +78,23 @@
   }
 
   // ---------- live stat on start screen ----------
+  const MIN_ROUNDS = 10; // a public average from a handful of rounds is noise
   async function loadStat() {
     const box = $("#stat"); if (!box) return;
     const num = $(".stat-num", box), txt = $(".stat-text", box);
     try {
       const s = await (await fetch(`/api/stats?test=${TEST}`)).json();
       const weekly = s.accuracy_week != null, acc = s.accuracy_week ?? s.accuracy;
-      if (acc == null) { num.textContent = ""; txt.textContent = "No results yet. Take the first test."; return; }
+      if (acc == null || s.rounds < MIN_ROUNDS) { num.textContent = ""; txt.textContent = "New benchmark. Early results are coming in, so take the test and help set the baseline."; return; }
       let delta = "";
       if (weekly && s.accuracy_prev != null && s.accuracy_prev !== acc) delta = `, ${acc > s.accuracy_prev ? "up" : "down"} from ${s.accuracy_prev}% in the previous 30 days`;
-      num.textContent = `${acc}%`;
+      countUp(num, acc, "%");
       txt.textContent = `of answers were correct ${weekly ? "over the past seven days" : "across all tests so far"}${delta}.`;
     } catch { txt.textContent = "Real or AI? 5 seconds per image."; }
   }
 
   // ---------- game ----------
-  const game = { mode: "round", opts: {}, items: [], idx: 0, answers: [], t0: 0, timer: null, locked: false };
+  const game = { mode: "round", opts: {}, items: [], idx: 0, answers: [], t0: 0, timer: null, ticks: [], locked: false, combo: 0 };
 
   async function start(mode, opts = {}) {
     game.mode = mode;
@@ -53,7 +105,7 @@
       const data = mode === "round" && prefetched ? prefetched : await fetchRound(mode, opts);
       prefetched = null;
       seconds = data.seconds || 5;
-      game.items = data.items; game.idx = 0; game.answers = []; game.day = data.day; game.data = data;
+      game.items = data.items; game.idx = 0; game.answers = []; game.combo = 0; game.day = data.day; game.data = data;
       $("#round-label").textContent = mode === "level" ? `Level ${data.level} · ${data.level_name}` : mode === "cat" ? data.cat_name : mode === "daily" ? "Daily" : "";
       await preload(game.items);
       show("play");
@@ -66,21 +118,34 @@
   function next() {
     if (game.idx >= game.items.length) return finish();
     const it = game.items[game.idx];
-    $("#img").src = it.src;
+    const img = $("#img"); img.src = it.src; img.classList.remove("enter"); void img.offsetWidth; img.classList.add("enter");
+    $(".frame").classList.remove("good", "bad");
     $("#count").textContent = `${game.idx + 1} / ${game.items.length}`;
-    $("#score-live").textContent = `Score ${game.answers.filter((a) => a.correct).length}`;
+    renderLive();
     const bar = $("#bar"); bar.classList.remove("run"); bar.style.transitionDuration = "0s"; bar.style.transform = "scaleX(1)";
     void bar.offsetWidth; bar.style.transitionDuration = `${seconds}s`; bar.classList.add("run");
     $("#fb").className = "fb"; game.locked = false; game.t0 = performance.now();
     game.timer = setTimeout(() => answer(null), seconds * 1000);
+    // last two seconds: bar turns red and ticks
+    $(".timer").classList.remove("low");
+    game.ticks = [2, 1].filter((s) => s < seconds).map((s) => setTimeout(() => { $(".timer").classList.add("low"); sfx.tick(); }, (seconds - s) * 1000));
+  }
+  function renderLive(bump) {
+    const live = $("#score-live");
+    live.innerHTML = `Score <span>${game.answers.filter((a) => a.correct).length}</span>${game.combo >= 3 ? `<span class="combo">🔥 ${game.combo}</span>` : ""}`;
+    if (bump) live.firstElementChild.className = "bump";
   }
 
   function answer(choice) {
-    if (game.locked) return; game.locked = true; clearTimeout(game.timer);
+    if (game.locked) return; game.locked = true; clearTimeout(game.timer); game.ticks.forEach(clearTimeout);
     const it = game.items[game.idx];
     const ms = Math.round(performance.now() - game.t0);
     const correct = choice === it.label;
     game.answers.push({ id: it.id, correct, choice, ms });
+    game.combo = correct ? game.combo + 1 : 0;
+    correct ? sfx.good(game.combo) : sfx.bad();
+    $(".frame").classList.add(correct ? "good" : "bad");
+    renderLive(correct);
     const fb = $("#fb");
     const what = it.label === "ai" ? `AI <small>${esc(it.model || "")}</small>` : `Real photo <small>${esc(it.credit ? "by " + it.credit : "")}</small>`;
     fb.innerHTML = (choice === null ? "Time's up. " : correct ? "Correct! " : "Not quite. ") + what;
@@ -115,6 +180,8 @@
     if (game.mode === "level") levelOutcome(score);
     if (game.mode === "daily") saveDaily(score, total, pct);
     renderShare(score, total, pct);
+    const great = game.mode === "level" ? score >= game.data.pass : score / total >= 0.9;
+    if (great) { sfx.win(); confetti(); } else sfx.end();
     if (game.mode === "round") fetchRound("round").then((d) => (prefetched = d)).catch(() => {});
     loadStat();
   }
@@ -129,6 +196,7 @@
         ? `<span class="lab">AI image · ${said}</span><b>${esc(it.model || "Unknown model")}</b>`
         : `<span class="lab">Real photo · ${said}</span><b>${esc(it.credit || "Wikimedia Commons")}</b><a href="${esc(it.page || "#")}" target="_blank" rel="noopener">${esc(it.license || "Source")}</a>`;
       const d = el("div", `miss ${it.label}`, `<img src="${esc(it.src)}" alt="" loading="lazy"><div class="cap">${cap}</div>`);
+      d.style.setProperty("--i", wrap.children.length);
       wrap.appendChild(d);
     }
   }
@@ -202,7 +270,7 @@
     const list = $("#cat-list"); if (!list || !catalog.cats.length) return;
     list.innerHTML = "";
     for (const c of catalog.cats) {
-      const li = el("li", null, `<a href="#"><span class="t-name">${esc(c.name)}</span><span class="t-desc">${c.count} images in the pool</span><span class="t-go">Practice</span></a>`);
+      const li = el("li", null, `<a href="#"><span class="thumb">${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy">` : ""}</span><span class="t-name">${esc(c.name)}</span><span class="t-desc">${c.count} images · 10 per round</span></a>`);
       $("a", li).onclick = (e) => { e.preventDefault(); start("cat", { cat: c.id }); };
       list.appendChild(li);
     }

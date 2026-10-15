@@ -137,7 +137,8 @@ async function apiCatalog(req, env, url) {
   const manifest = await loadManifest(env, url);
   const counts = catCounts(manifest);
   const cats = Object.entries(CATS).filter(([id]) => catOpen(counts, id, cfg.practiceSize))
-    .map(([id, name]) => ({ id, name, count: counts[id].real + counts[id].ai }));
+    .map(([id, name]) => ({ id, name, count: counts[id].real + counts[id].ai,
+      thumb: manifest.items.find((i) => i.cat === id && i.label === "real")?.src }));
   return json({ test, levels: LEVELS.map((l) => ({ ...l, size: LEVEL_SIZE })), pass: PASS_SCORE, cats, practice_size: cfg.practiceSize },
     200, { "cache-control": "public, max-age=300" });
 }
