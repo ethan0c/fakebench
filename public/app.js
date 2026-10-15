@@ -188,8 +188,9 @@
     $(".frame").classList.remove("good", "bad");
     $("#count").textContent = `${game.idx + 1} / ${game.items.length}`;
     renderLive();
-    const bar = $("#bar"); bar.classList.remove("run"); bar.style.transitionDuration = "0s"; bar.style.transform = "scaleX(1)";
-    void bar.offsetWidth; bar.style.transitionDuration = `${seconds}s`; bar.classList.add("run");
+    // the bar slides out of its track at a constant rate, so its rounded end stays round; it freezes on answer
+    const bar = $("#bar"); game.barAnim?.cancel();
+    game.barAnim = bar.animate?.([{ transform: "translateX(0)" }, { transform: "translateX(-100%)" }], { duration: seconds * 1000, easing: "linear", fill: "forwards" });
     $("#fb").className = "fb"; game.locked = false; game.t0 = performance.now();
     game.timer = setTimeout(() => answer(null), seconds * 1000);
     // last two seconds: bar turns red and ticks
@@ -203,7 +204,7 @@
   }
 
   function answer(choice) {
-    if (game.locked) return; game.locked = true; clearTimeout(game.timer); game.ticks.forEach(clearTimeout);
+    if (game.locked) return; game.locked = true; clearTimeout(game.timer); game.ticks.forEach(clearTimeout); game.barAnim?.pause();
     const it = game.items[game.idx];
     const ms = Math.round(performance.now() - game.t0);
     const correct = choice === it.label;
