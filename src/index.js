@@ -94,11 +94,16 @@ function catCounts(manifest) {
 }
 const catOpen = (counts, id, n) => counts[id] && counts[id].real >= n / 2 && counts[id].ai >= n / 2;
 
+// Real photos are matched to the AI picks by subject, so "people = AI, landscapes = real" can't score points.
 function pickRound(manifest, n, rng) {
-  const real = manifest.items.filter((i) => i.label === "real");
-  const ai = manifest.items.filter((i) => i.label === "ai");
-  const half = Math.floor(n / 2);
-  return shuffle([...sample(real, half, rng), ...sample(ai, n - half, rng)], rng);
+  const real = shuffle(manifest.items.filter((i) => i.label === "real"), rng);
+  const ai = sample(manifest.items.filter((i) => i.label === "ai"), n - Math.floor(n / 2), rng);
+  const used = new Set(), reals = [];
+  for (const a of ai.slice(0, Math.floor(n / 2))) {
+    const r = real.find((x) => !used.has(x.id) && x.cat && x.cat === a.cat) || real.find((x) => !used.has(x.id));
+    used.add(r.id); reals.push(r);
+  }
+  return shuffle([...reals, ...ai], rng);
 }
 
 // ---------- API ----------

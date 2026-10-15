@@ -1,0 +1,12 @@
+# Image ids kept out of the pool for good (build_manifest.py skips them, even if they're still in data/raw).
+# Non-photographic AI images: cartoons, painterly or stylized renders. They're free points in a photo test.
+a_57503abdd5
+a_e823b6136b
+a_61184ee90b
+a_671a627320
+a_1a8e62d51f
+a_63cc3510b0
+a_ea271d4c51
+a_23e3783b1c
+a_3aac8f3424
+a_8e25a77c8d

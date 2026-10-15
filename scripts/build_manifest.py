@@ -28,11 +28,14 @@ def main():
     a = ap.parse_args()
     os.makedirs(os.path.join(a.out, "img"), exist_ok=True)
     # Start from the existing pool (CI runs have an empty raw dir), keeping items whose image still exists.
+    bpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blocklist.txt")
+    blocked = {l.strip() for l in open(bpath) if l.strip() and not l.startswith("#")} if os.path.exists(bpath) else set()
     mpath = os.path.join(a.out, "manifest.json"); items = []
     if os.path.exists(mpath):
         try:
             for it in json.load(open(mpath))["items"]:
                 if not os.path.exists(os.path.join(a.out, "img", it["id"] + ".jpg")): continue
+                if it["id"] in blocked: continue
                 if it["label"] == "ai":
                     if it.get("model_raw"): it["model"] = pretty_model(it["model_raw"])
                     if not plausible(it.get("prompt"), it.get("model")): continue
@@ -45,7 +48,7 @@ def main():
         # oldest first, so the manifest order is age order and prune_pool drops the oldest
         for fn in sorted((f for f in os.listdir(d) if f.endswith(".json")), key=lambda f: os.path.getmtime(os.path.join(d, f))):
             with open(os.path.join(d, fn)) as f: meta = json.load(f)
-            if meta["id"] in seen: continue
+            if meta["id"] in seen or meta["id"] in blocked: continue
             if meta["label"] == "ai":
                 if meta.get("model_raw"): meta["model"] = pretty_model(meta["model_raw"])
                 if not plausible(meta.get("prompt"), meta.get("model")): continue
