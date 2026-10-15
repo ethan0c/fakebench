@@ -270,7 +270,7 @@
     const list = $("#cat-list"); if (!list || !catalog.cats.length) return;
     list.innerHTML = "";
     for (const c of catalog.cats) {
-      const li = el("li", null, `<a href="#"><span class="thumb">${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy">` : ""}</span><span class="t-name">${esc(c.name)}</span><span class="t-desc">${c.count} images · 10 per round</span></a>`);
+      const li = el("li", null, `<a href="#"><span class="thumb">${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy">` : ""}</span><span class="t-name">${esc(c.name)}</span><span class="t-desc">${c.count} images</span></a>`);
       $("a", li).onclick = (e) => { e.preventDefault(); start("cat", { cat: c.id }); };
       list.appendChild(li);
     }
